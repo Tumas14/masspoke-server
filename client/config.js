@@ -1,7 +1,8 @@
-// Change MASSPOKE_SERVER_URL after Render deploy, or set at runtime via electron-store override.
+// Change MASSPOKE_SERVER_URL to override; electron-store can also override at runtime.
 module.exports = {
-  // Local default while developing; replace with https://YOUR-SERVICE.onrender.com later
-  SERVER_URL: process.env.MASSPOKE_SERVER_URL || 'http://localhost:3000',
+  // Free Render staging (Nure Kowser). For local bot testing use http://localhost:3000
+  SERVER_URL:
+    process.env.MASSPOKE_SERVER_URL || 'https://masspoke-test.onrender.com',
   OAUTH_LOOPBACK_HOST: '127.0.0.1',
   OAUTH_LOOPBACK_PORT: 3847,
 };
