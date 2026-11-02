@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; user-select: none; }
+    body { margin: 0; padding: 10px; background: transparent; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
+    .container { position: relative; width: 100%; height: 140px; }
+    .poke-card {
+      position: absolute; top: 0; left: 0; width: 100%;
+      background: rgba(30, 31, 34, 0.95); border: 2px solid #5865F2;
+      border-radius: 10px; padding: 15px; color: #FFF;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: none;
+    }
+    .poke-card.active { opacity: 1; transform: translateY(0); }
+    .poke-header { display: flex; gap: 8px; font-size: 14px; font-weight: bold; color: #5865F2; margin-bottom: 6px; }
+    .poke-body { font-size: 15px; color: #DBDEE1; word-break: break-word; }
+    .settings-btn {
+      position: absolute; bottom: 0; right: 0; background: rgba(43, 45, 49, 0.9);
+      border: 1px solid #4E5058; border-radius: 50%; width: 32px; height: 32px;
+      color: #B5BAC1; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100;
+    }
+    .settings-btn:hover { background: #5865F2; color: #FFF; }
+    .settings-panel {
+      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(43, 45, 49, 0.98); border-radius: 10px; border: 1px solid #4E5058;
+      padding: 12px; color: #FFF; flex-direction: column; gap: 8px; z-index: 90;
+    }
+    .settings-panel.active { display: flex; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; }
+    .drag-handle { background: #35363C; padding: 6px; border-radius: 4px; text-align: center; font-size: 12px; cursor: move; -webkit-app-region: drag; border: 1px dashed #5865F2; }
+    .btn-action { background: #4752C4; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .btn-action:hover { background: #353F95; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="pokeCard" class="poke-card">
+      <div class="poke-header"><span>📢 MASSPOKE DE</span><span id="pokeSender">Usuario</span></div>
+      <div id="pokeMessage" class="poke-body">Mensaje aquí</div>
+    </div>
+    <div id="settingsPanel" class="settings-panel">
+      <div class="panel-header"><span>Ajustes Masspoke</span><button id="closeSettings" class="btn-action">✕</button></div>
+      <div class="drag-handle">⠿ Arrastra para mover</div>
+      <button id="selectAudioBtn" class="btn-action">📁 Cambiar Audio (.mp3/.wav)</button>
+      <button id="logoutBtn" class="btn-action">Cerrar sesión</button>
+    </div>
+    <div id="settingsBtn" class="settings-btn">⚙️</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettings = document.getElementById('closeSettings');
+    const selectAudioBtn = document.getElementById('selectAudioBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const pokeCard = document.getElementById('pokeCard');
+    const pokeSender = document.getElementById('pokeSender');
+    const pokeMessage = document.getElementById('pokeMessage');
+
+    let customAudioPath = localStorage.getItem('customAudio') || 'https://www.myinstants.com/media/sounds/discord-notification.mp3';
+
+    settingsBtn.addEventListener('mouseenter', () => ipcRenderer.send('set-ignore-mouse-events', false));
+    settingsBtn.addEventListener('mouseleave', () => { if (!settingsPanel.classList.contains('active')) ipcRenderer.send('set-ignore-mouse-events', true, { forward: true }); });
+    settingsPanel.addEventListener('mouseenter', () => ipcRenderer.send('set-ignore-mouse-events', false));
+    settingsPanel.addEventListener('mouseleave', () => { if (!settingsPanel.classList.contains('active')) ipcRenderer.send('set-ignore-mouse-events', true, { forward: true }); });
+
+    settingsBtn.addEventListener('click', () => { settingsPanel.classList.add('active'); ipcRenderer.send('set-ignore-mouse-events', false); });
+    closeSettings.addEventListener('click', () => { settingsPanel.classList.remove('active'); ipcRenderer.send('set-ignore-mouse-events', true, { forward: true }); });
+
+    selectAudioBtn.addEventListener('click', () => ipcRenderer.send('select-audio-file'));
+    logoutBtn.addEventListener('click', () => ipcRenderer.send('logout'));
+    ipcRenderer.on('audio-selected', (event, filePath) => {
+      customAudioPath = filePath;
+      localStorage.setItem('customAudio', filePath);
+    });
+
+    ipcRenderer.on('trigger-poke', (event, data) => {
+      pokeSender.textContent = data.sender;
+      pokeMessage.textContent = data.message;
+      const audio = new Audio(customAudioPath);
+      audio.play().catch(e => {});
+      pokeCard.classList.add('active');
+      // Keep visible long enough to read (was 2500ms)
+      setTimeout(() => pokeCard.classList.remove('active'), 8000);
+    });
+  </script>
+</body>
+</html>

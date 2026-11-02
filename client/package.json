@@ -1,0 +1,39 @@
+{
+  "name": "masspoke-discord",
+  "version": "2.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build": "electron-builder --win nsis --x64",
+    "build:portable": "electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "socket.io-client": "^4.7.4"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.masspoke.discord",
+    "productName": "Masspoke Discord",
+    "files": [
+      "**/*",
+      "!dist/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
+  }
+}
