@@ -83,8 +83,7 @@
       const audio = new Audio(customAudioPath);
       audio.play().catch(e => {});
       pokeCard.classList.add('active');
-      // Keep visible long enough to read (was 2500ms)
-      setTimeout(() => pokeCard.classList.remove('active'), 8000);
+      setTimeout(() => pokeCard.classList.remove('active'), 3000);
     });
   </script>
 </body>
