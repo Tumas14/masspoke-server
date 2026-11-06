@@ -26,6 +26,7 @@ function startBot(io) {
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildVoiceStates,
     ],
     partials: [Partials.GuildMember],
   });
@@ -42,6 +43,11 @@ function startBot(io) {
     // Admin setup: !mpconfig #channel @role  OR  !mpconfig <channelId> <roleId>
     if (content.startsWith('!mpconfig')) {
       await handleConfigCommand(message);
+      return;
+    }
+
+    if (content === '!mm' || content.startsWith('!mm ')) {
+      await handleMassMove(message);
       return;
     }
 
@@ -156,6 +162,122 @@ async function handleConfigCommand(message) {
   console.log(
     `[Config] Guild ${message.guild.id} → channel ${channel.id}, role ${role.id}`
   );
+}
+
+const MOVE_BATCH_SIZE = 5;
+
+async function handleMassMove(message) {
+  try {
+    const cfg = await getGuild(message.guild.id);
+    if (!cfg) {
+      await message
+        .reply(
+          'This server is not configured. An admin must run `!mpconfig #channel @role` first.'
+        )
+        .catch(() => {});
+      return;
+    }
+
+    const caller =
+      message.member ||
+      (await message.guild.members.fetch(message.author.id));
+    if (!caller.roles.cache.has(cfg.roleId)) {
+      await message
+        .reply('You need the Masspoke role to use `!mm`.')
+        .catch(() => {});
+      return;
+    }
+
+    const destination = caller.voice?.channel;
+    if (!destination) {
+      await message
+        .reply('Join a voice channel first, then type `!mm`.')
+        .catch(() => {});
+      return;
+    }
+
+    const me = message.guild.members.me;
+    const canMove = Boolean(me?.permissions.has(PermissionFlagsBits.MoveMembers));
+    const canConnect = Boolean(
+      me && destination.permissionsFor(me)?.has(PermissionFlagsBits.Connect)
+    );
+    if (!canMove || !canConnect) {
+      await message
+        .reply(
+          'The bot needs **Move Members** and **Connect** on that voice channel, and its role must be above the people it moves.'
+        )
+        .catch(() => {});
+      return;
+    }
+
+    await message.guild.members.fetch();
+
+    let alreadyHere = 0;
+    let notInVoice = 0;
+    const toMove = [];
+
+    for (const member of message.guild.members.cache.values()) {
+      if (member.user.bot || !member.roles.cache.has(cfg.roleId)) continue;
+      if (member.id === caller.id) continue;
+
+      const current = member.voice?.channel;
+      if (!current) {
+        notInVoice += 1;
+        continue;
+      }
+      if (current.id === destination.id) {
+        alreadyHere += 1;
+        continue;
+      }
+      toMove.push(member);
+    }
+
+    const { moved, failed } = await moveInBatches(toMove, destination);
+
+    console.log(
+      `[MassMove] ${caller.displayName} @ ${message.guild.name} → ${destination.name}: moved ${moved}, already ${alreadyHere}, not in voice ${notInVoice}, failed ${failed}`
+    );
+
+    await message
+      .reply(
+        `Mass move to **${destination.name}**.\nMoved: ${moved}\nAlready there: ${alreadyHere}\nNot in voice: ${notInVoice}\nFailed: ${failed}`
+      )
+      .catch(() => {});
+  } catch (error) {
+    console.error('[Error] Processing !mm:', error);
+    await message
+      .reply('Mass move failed. Check that the bot is above the Masspoke role and can move members.')
+      .catch(() => {});
+  }
+}
+
+async function moveInBatches(members, channel) {
+  let moved = 0;
+  let failed = 0;
+
+  for (let i = 0; i < members.length; i += MOVE_BATCH_SIZE) {
+    const batch = members.slice(i, i + MOVE_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (member) => {
+        try {
+          await member.voice.setChannel(channel);
+          return true;
+        } catch (err) {
+          console.error(
+            `[MassMove] Failed to move ${member.user?.tag || member.id}:`,
+            err.message
+          );
+          return false;
+        }
+      })
+    );
+    for (const ok of results) {
+      if (ok) moved += 1;
+      else failed += 1;
+    }
+  }
+
+  return { moved, failed };
 }
 
 module.exports = {
