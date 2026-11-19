@@ -28,24 +28,6 @@ async function main() {
     });
   });
 
-  // TEMP PROBE: remove after the Realera reachability test.
-  app.get('/_probe/tumas', async (_req, res) => {
-    try {
-      const r = await fetch('https://realera.org/community/characters/tumas');
-      const body = await r.text();
-      res.json({
-        status: r.status,
-        cfMitigated: r.headers.get('cf-mitigated'),
-        hasJustAMoment: body.includes('Just a moment'),
-        hasLevel: body.includes('Level'),
-        hasVocation: body.includes('Vocation'),
-        bytes: body.length,
-      });
-    } catch (err) {
-      res.status(502).json({ error: err.message });
-    }
-  });
-
   app.use('/auth', createAuthRouter());
 
   const server = http.createServer(app);
