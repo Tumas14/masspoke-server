@@ -295,8 +295,8 @@ function stripTag(name) {
 
 function formatNickname(baseName, vocation, level) {
   const parts = [];
+  if (level != null) parts.push(String(level));
   if (vocation) parts.push(vocation);
-  if (level != null) parts.push(`lvl${level}`);
   if (!parts.length) return (baseName || 'Player').slice(0, NICK_LIMIT);
 
   const tag = ` [${parts.join(' ')}]`;

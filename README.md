@@ -201,7 +201,7 @@ Free Render sleeps. The first health check after sleep can take up to a minute. 
 
 ## Level and vocation nicknames
 
-`!add` changes the **server nickname**, not the global Discord username. The result looks like `TUMAS [ED lvl131]`.
+`!add` changes the **server nickname**, not the global Discord username. The result looks like `TUMAS [150 ED]`.
 
 - `!add 131` sets your level and keeps the saved vocation
 - `!add ED` sets your vocation and keeps the saved level
@@ -219,7 +219,7 @@ The bot role needs **Manage Nicknames** and must sit above the member. On Spanis
 | `!mpconfig #channel @role` | Server admin | Any text channel | Save this server's poke channel and role. Once, or when changing them |
 | `!mp message` | Someone with the role | The saved text channel | Popup for role members who have the app open |
 | `!mm` | Someone with the role, already in voice | Any text channel | Move other role members who are in voice into your voice channel |
-| `!add 131 ED` | Anyone, on themselves | Any text channel | Set nickname to `Name [ED lvl131]`. Admins can add `@member` |
+| `!add 150 ED` | Anyone, on themselves | Any text channel | Set nickname to `Name [150 ED]`. Admins can add `@member` |
 
 ## Local development
 
