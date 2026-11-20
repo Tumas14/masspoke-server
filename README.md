@@ -199,6 +199,19 @@ After a deploy, open the health URL. Logs should show `Connected to Postgres`, `
 
 Free Render sleeps. The first health check after sleep can take up to a minute. Commands typed while it is asleep do nothing until the bot is connected again.
 
+## Level and vocation nicknames
+
+`!add` changes the **server nickname**, not the global Discord username. The result looks like `TUMAS [ED lvl131]`.
+
+- `!add 131` sets your level and keeps the saved vocation
+- `!add ED` sets your vocation and keeps the saved level
+- `!add 131 ED` sets both
+- `!add 131 ED @Name` sets both on that member
+
+Level is any whole number from 1 to 9999. Vocation is `EK`, `RP`, `ED`, `MS`, or `EM`. Sending only one value keeps the other. Anyone can update themselves. Changing someone else requires Administrator or Manage Nicknames.
+
+The bot role needs **Manage Nicknames** and must sit above the member. On Spanish Mafia that role is **Masspoke-Test**, placed under **Admin**.
+
 ## Command cheat sheet
 
 | Command | Who | Where | Effect |
@@ -206,6 +219,7 @@ Free Render sleeps. The first health check after sleep can take up to a minute. 
 | `!mpconfig #channel @role` | Server admin | Any text channel | Save this server's poke channel and role. Once, or when changing them |
 | `!mp message` | Someone with the role | The saved text channel | Popup for role members who have the app open |
 | `!mm` | Someone with the role, already in voice | Any text channel | Move other role members who are in voice into your voice channel |
+| `!add 131 ED` | Anyone, on themselves | Any text channel | Set nickname to `Name [ED lvl131]`. Admins can add `@member` |
 
 ## Local development
 

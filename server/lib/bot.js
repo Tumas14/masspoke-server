@@ -5,7 +5,7 @@ const {
   PermissionFlagsBits,
 } = require('discord.js');
 const config = require('./config');
-const { getGuild, upsertGuild } = require('./db');
+const { getGuild, upsertGuild, getMemberTag, upsertMemberTag } = require('./db');
 const { emitPoke, revokeGuildAccess } = require('./socketHub');
 
 let client = null;
@@ -48,6 +48,11 @@ function startBot(io) {
 
     if (content === '!mm' || content.startsWith('!mm ')) {
       await handleMassMove(message);
+      return;
+    }
+
+    if (content === '!add' || content.startsWith('!add ')) {
+      await handleAddCommand(message);
       return;
     }
 
@@ -278,6 +283,116 @@ async function moveInBatches(members, channel) {
   }
 
   return { moved, failed };
+}
+
+const VOCATIONS = new Set(['EK', 'RP', 'ED', 'MS', 'EM']);
+const NICK_LIMIT = 32;
+
+function stripTag(name) {
+  const stripped = String(name || '').replace(/\s*\[[^\]]*\]\s*$/, '').trim();
+  return stripped || String(name || '').trim();
+}
+
+function formatNickname(baseName, vocation, level) {
+  const parts = [];
+  if (vocation) parts.push(vocation);
+  if (level != null) parts.push(`lvl${level}`);
+  if (!parts.length) return (baseName || 'Player').slice(0, NICK_LIMIT);
+
+  const tag = ` [${parts.join(' ')}]`;
+  const room = Math.max(1, NICK_LIMIT - tag.length);
+  const base = (baseName || 'Player').slice(0, room).trim() || 'Player';
+  return `${base}${tag}`.slice(0, NICK_LIMIT);
+}
+
+async function handleAddCommand(message) {
+  try {
+    const tokens = message.content.trim().slice(4).trim().split(/\s+/).filter(Boolean);
+    let level = null;
+    let vocation = null;
+    const unknown = [];
+
+    for (const token of tokens) {
+      if (/^<@!?\d+>$/.test(token)) continue;
+      if (/^\d+$/.test(token)) {
+        if (level !== null) unknown.push(token);
+        else level = Number(token);
+        continue;
+      }
+      const voc = token.toUpperCase();
+      if (VOCATIONS.has(voc)) {
+        if (vocation) unknown.push(token);
+        else vocation = voc;
+        continue;
+      }
+      unknown.push(token);
+    }
+
+    if (unknown.length || (level === null && !vocation)) {
+      await message
+        .reply(
+          'Usage: `!add 131 ED` or `!add 131 ED @member`\nLevel is 1–9999. Vocation is EK, RP, ED, MS, or EM. You can send just one of them.'
+        )
+        .catch(() => {});
+      return;
+    }
+
+    if (level !== null && (level < 1 || level > 9999)) {
+      await message
+        .reply('Level must be a whole number from 1 to 9999.')
+        .catch(() => {});
+      return;
+    }
+
+    const mentioned = message.mentions.members.first();
+    const target = mentioned || message.member;
+    if (!target) {
+      await message.reply('Could not find that member.').catch(() => {});
+      return;
+    }
+
+    if (target.id !== message.author.id) {
+      const caller =
+        message.member ||
+        (await message.guild.members.fetch(message.author.id));
+      const canManage =
+        caller.permissions.has(PermissionFlagsBits.Administrator) ||
+        caller.permissions.has(PermissionFlagsBits.ManageNicknames);
+      if (!canManage) {
+        await message
+          .reply('You can only change your own nickname. Admins can change someone else.')
+          .catch(() => {});
+        return;
+      }
+    }
+
+    const existing = await getMemberTag(message.guild.id, target.id);
+    const baseName = existing?.baseName || stripTag(target.displayName);
+    const nextVocation = vocation || existing?.vocation || null;
+    const nextLevel = level !== null ? level : existing?.level ?? null;
+    const nickname = formatNickname(baseName, nextVocation, nextLevel);
+
+    await upsertMemberTag({
+      guildId: message.guild.id,
+      userId: target.id,
+      baseName,
+      vocation: nextVocation,
+      level: nextLevel,
+    });
+
+    await target.setNickname(nickname);
+    console.log(
+      `[Add] ${message.author.tag} set ${target.user?.tag || target.id} → ${nickname}`
+    );
+    await message.reply(`Nickname set to **${nickname}**.`).catch(() => {});
+  } catch (error) {
+    console.error('[Error] Processing !add:', error);
+    await message
+      .reply(
+        'Could not change that nickname. The bot needs **Manage Nicknames**, and its role must be above that member.'
+      )
+      .catch(() => {});
+  }
 }
 
 module.exports = {
